@@ -3,7 +3,7 @@
 A very simple, clean and easy to use implementation of the `defer` statement in
 C, using two nonstandard extensions available by default in GCC:
 
-  * http://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-cleanup-variable-attribute[`__attribute__((cleanup(...)))`]
+  * http://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-cleanup-variable-attribute[`cleanup` variable attribute]
   * https://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html[Nested functions]
 
 As such this is _not portable_.  Someone with the same idea designed
@@ -21,28 +21,32 @@ that convenient to use.
 
 == Example
 
-	#include <stdio.h>
-	#include <stdlib.h>
-	#include "defer.h"
+----
+#include <stdio.h>
+#include <stdlib.h>
+#include "defer.h"
 
-	int
-	main(void)
-	{
-		defer {
-			printf("First deferral\n");
-		};
-		defer {
-			printf("Second deferral\n");
-		};
-		printf("Normal print statement\n");
-		return EXIT_SUCCESS;
-	}
+int
+main(void)
+{
+	defer {
+		printf("First deferral\n");
+	};
+	defer {
+		printf("Second deferral\n");
+	};
+	printf("Normal print statement\n");
+	return EXIT_SUCCESS;
+}
+----
 
 Program output:
 
-	Normal print statement
-	Second deferral
-	First deferral
+----
+Normal print statement
+Second deferral
+First deferral
+----
 
 == Explanation
 
@@ -50,11 +54,13 @@ For as complicated as the macros look, they really aren't doing much.  If we
 look at the preprocessor output, here is what the first `defer` statement
 in `main` gets translated to:
 
-	auto void defer__id0func(char (*)[]);
-	__attribute__((cleanup(defer__id0func))) char defer__id0var[0];
-	void defer__id0func(char (*defer__id0param)[]) {
-		printf("First deferral\n");
-	};
+----
+auto void defer__id0func(char (*)[]);
+__attribute__((cleanup(defer__id0func))) char defer__id0var[0];
+void defer__id0func(char (*defer__id0param)[]) {
+	printf("First deferral\n");
+};
+----
 
 The first line is just a forward declaration.  The second line is where the
 magic happens.  We are using the `cleanup` variable attribute, which allows us
@@ -69,9 +75,11 @@ We want to define the function after the variable so that we get the nice
 first curly brace at the end of the third line.  If we couldn't forward-declare
 the cleanup function, then the macro would have to be used like this:
 
-	defer (
-		printf("First deferral\n");
-	);
+----
+defer (
+	printf("First deferral\n");
+);
+----
 
 Which wouldn't be quite as pretty.
 
