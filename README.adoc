@@ -31,10 +31,10 @@ main(void)
 {
 	defer {
 		printf("First deferral\n");
-	};
+	}
 	defer {
 		printf("Second deferral\n");
-	};
+	}
 	printf("Normal print statement\n");
 	return EXIT_SUCCESS;
 }
@@ -59,7 +59,7 @@ auto void defer__id0func(char (*)[]);
 __attribute__((cleanup(defer__id0func))) char defer__id0var[0];
 void defer__id0func(char (*defer__id0param)[]) {
 	printf("First deferral\n");
-};
+}
 ----
 
 The first line is just a forward declaration.  The second line is where the
@@ -78,7 +78,7 @@ the cleanup function, then the macro would have to be used like this:
 ----
 defer (
 	printf("First deferral\n");
-);
+)
 ----
 
 Which wouldn't be quite as pretty.
