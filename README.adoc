@@ -1,0 +1,104 @@
+= `defer` in C
+
+A very simple, clean and easy to use implementation of the `defer` statement in
+C, using two nonstandard extensions available by default in GCC:
+
+  * http://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-cleanup-variable-attribute[`__attribute__((cleanup(...)))`]
+  * https://gcc.gnu.org/onlinedocs/gcc/Nested-Functions.html[Nested functions]
+
+As such this is _not portable_.  Someone with the same idea designed
+https://fdiv.net/2015/10/08/emulating-defer-c-clang-or-gccblocks[a similar
+solution for Clang], using blocks (anonymous functions) instead of GCC's nested
+functions.
+
+C++ also lacks a `defer` statement, but using destructors, the same effect can
+be produced.
+
+http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2542.pdf[A proposal has been
+made to add `defer` statements to the new C2X standard], though there are
+already portable implementations of `defer` in C using macros, which just aren't
+that convenient to use.
+
+== Example
+
+	#include <stdio.h>
+	#include <stdlib.h>
+	#include "defer.h"
+
+	int
+	main(void)
+	{
+		defer {
+			printf("First deferral\n");
+		};
+		defer {
+			printf("Second deferral\n");
+		};
+		printf("Normal print statement\n");
+		return EXIT_SUCCESS;
+	}
+
+Program output:
+
+	Normal print statement
+	Second deferral
+	First deferral
+
+== Explanation
+
+For as complicated as the macros look, they really aren't doing much.  If we
+look at the preprocessor output, here is what the first `defer` statement
+in `main` gets translated to:
+
+	auto void defer__id0func(char (*)[]);
+	__attribute__((cleanup(defer__id0func))) char defer__id0var[0];
+	void defer__id0func(char (*defer__id0param)[]) {
+		printf("First deferral\n");
+	};
+
+The first line is just a forward declaration.  The second line is where the
+magic happens.  We are using the `cleanup` variable attribute, which allows us
+to specify a function to call just before the variable goes out of scope.  The
+function is required to take one argument: a pointer to the variable going out
+of scope.  That's the same time that a deferred block should be executed, so we
+can use the cleanup function to ignore the variable we declared and defer whatever
+we want.
+
+We want to define the function after the variable so that we get the nice
+`defer {` quasi-syntax.  The macro definition gets cut off right before the
+first curly brace at the end of the third line.  If we couldn't forward-declare
+the cleanup function, then the macro would have to be used like this:
+
+	defer (
+		printf("First deferral\n");
+	);
+
+Which wouldn't be quite as pretty.
+
+== License
+
+There's only four significant lines of code here.  I don't know whether it
+constitutes a creative work, but let me explicitly waive my copyright:
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
